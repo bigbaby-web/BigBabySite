@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
 import { Music, Plus, Edit3, Trash2, Eye, EyeOff, Save, X, Upload, LogOut } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
-// Только этот email имеет доступ
+// Только этот email имеет доступ (временно отключено)
 const ADMIN_EMAIL = "bigbaby.xyz@gmail.com"
 
 interface Track {
@@ -43,17 +42,18 @@ export default function AdminPage() {
     is_published: true
   })
 
-  // Проверка доступа
+  // Проверка доступа (ВРЕМЕННО ОТКЛЮЧЕНО)
   useEffect(() => {
     if (!user) {
       router.push("/")
       return
     }
     
-    if (user.email !== ADMIN_EMAIL) {
-      router.push("/")
-      return
-    }
+    // Проверка по email ЗАКОММЕНТИРОВАНА
+    // if (user.email !== ADMIN_EMAIL) {
+    //   router.push("/")
+    //   return
+    // }
 
     fetchTracks()
   }, [user])
@@ -101,8 +101,8 @@ export default function AdminPage() {
     fetchTracks()
   }
 
-  // Если не админ - ничего не показываем
-  if (!user || user.email !== ADMIN_EMAIL) {
+  // Если пользователь не залогинен - редирект
+  if (!user) {
     return null
   }
 
