@@ -66,11 +66,23 @@ export default function AdminPage() {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!user) {
-        setCheckingAdmin(false)
-        router.push("/")
-        return
-      }
+  if (!user) {
+    setCheckingAdmin(false)
+    router.push("/")
+    return
+  }
+
+  // проверка по email администратора
+  if (user.email === "bigbaby.xyz@gmail.com") {
+    setIsAdmin(true)
+    fetchTracks()
+  } else {
+    router.push("/")
+  }
+
+  setCheckingAdmin(false)
+}
+
 
       // Check if this user is the first registered user (admin)
       const { data } = await supabase
