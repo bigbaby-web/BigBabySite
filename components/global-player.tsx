@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Play,
@@ -121,10 +121,7 @@ export function GlobalPlayer() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => {
-                    console.log("Prev clicked")
-                    playPrev()
-                  }}
+                  onClick={playPrev}
                   className="p-1.5 md:p-2 rounded-full hover:bg-secondary/50 transition-colors"
                 >
                   <SkipBack size={18} className="md:w-5 md:h-5" />
@@ -133,14 +130,7 @@ export function GlobalPlayer() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => {
-                    console.log("Play/Pause clicked")
-                    if (isPlaying) {
-                      pauseTrack()
-                    } else {
-                      resumeTrack()
-                    }
-                  }}
+                  onClick={isPlaying ? pauseTrack : resumeTrack}
                   className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground flex items-center justify-center shadow-lg"
                 >
                   {isPlaying ? <Pause size={16} className="md:w-5 md:h-5" /> : <Play size={16} className="md:w-5 md:h-5 ml-0.5" />}
@@ -149,10 +139,7 @@ export function GlobalPlayer() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => {
-                    console.log("Next clicked")
-                    playNext()
-                  }}
+                  onClick={playNext}
                   className="p-1.5 md:p-2 rounded-full hover:bg-secondary/50 transition-colors"
                 >
                   <SkipForward size={18} className="md:w-5 md:h-5" />

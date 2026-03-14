@@ -24,8 +24,6 @@ interface PlayerContextType {
   volume: number
   isMuted: boolean
   queue: Track[]
-  isPlayerVisible: boolean
-  setIsPlayerVisible: (visible: boolean) => void
   playTrack: (track: Track) => Promise<void>
   pauseTrack: () => void
   resumeTrack: () => Promise<void>
@@ -49,58 +47,100 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isMuted, setIsMuted] = useState(false)
   const [queue, setQueue] = useState<Track[]>([])
   const [hasIncrementedPlay, setHasIncrementedPlay] = useState(false)
-  const [isPlayerVisible, setIsPlayerVisible] = useState(true)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
     audioRef.current = new Audio()
     
-    audioRef.current.addEventListener('timeupdate', () => {
-      setCurrentTime(audioRef.current?.currentTime || 0)
-    })
+    const audio = audioRef.current
     
-    audioRef.current.addEventListener('loadedmetadata', () => {
-      setDuration(audioRef.current?.duration || 0)
-    })
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime)
+    }
     
-    audioRef.current.addEventListener('ended', () => {
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration)
+    }
+    
+    const handleEnded = () => {
       setIsPlaying(false)
       setHasIncrementedPlay(false)
-      playNext()
-    })
-    
-    audioRef.current.addEventListener('play', () => setIsPlaying(true))
-    audioRef.current.addEventListener('pause', () => setIsPlaying(false))
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
+      // Автоматически играем следующий трек
+      if (queue.length > 0 && currentTrack) {
+        playNext()
       }
     }
+    
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
+      audio.pause()
+      audio.src = ''
+    }
   }, [])
+
+  // Обновляем эффект при изменении queue и currentTrack для handleEnded
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const handleEnded = () => {
+      setIsPlaying(false)
+      setHasIncrementedPlay(false)
+      if (queue.length > 0 && currentTrack) {
+        playNext()
+      }
+    }
+
+    audio.addEventListener('ended', handleEnded)
+    return () => audio.removeEventListener('ended', handleEnded)
+  }, [queue, currentTrack])
 
   const playTrack = async (track: Track) => {
     if (!audioRef.current) return
 
+    // Если это тот же трек
     if (currentTrack?.id === track.id) {
-      audioRef.current.play()
+      try {
+        await audioRef.current.play()
+        return
+      } catch (error) {
+        console.error("Ошибка воспроизведения:", error)
+      }
       return
     }
 
+    // Останавливаем текущий трек
+    audioRef.current.pause()
     setHasIncrementedPlay(false)
     
-    audioRef.current.pause()
-    
+    // Загружаем новый
     audioRef.current.src = track.audio_url || ''
     audioRef.current.volume = isMuted ? 0 : volume
     
     try {
       await audioRef.current.play()
       setCurrentTrack(track)
-      setIsPlayerVisible(true)
       
+      // Добавляем в очередь, если ещё нет
+      if (!queue.find(t => t.id === track.id)) {
+        setQueue(prev => [...prev, track])
+      }
+      
+      // Увеличиваем счетчик только один раз
       if (!hasIncrementedPlay) {
         await supabase
           .from("tracks")
@@ -121,24 +161,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const resumeTrack = async () => {
     if (audioRef.current && currentTrack) {
-      await audioRef.current.play()
+      try {
+        await audioRef.current.play()
+      } catch (error) {
+        console.error("Ошибка воспроизведения:", error)
+      }
     }
   }
 
   const playNext = () => {
-    if (queue.length > 0 && currentTrack) {
-      const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
-      const nextIndex = (currentIndex + 1) % queue.length
-      playTrack(queue[nextIndex])
-    }
+    if (queue.length === 0 || !currentTrack) return
+    
+    const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
+    if (currentIndex === -1) return
+    
+    const nextIndex = (currentIndex + 1) % queue.length
+    playTrack(queue[nextIndex])
   }
 
   const playPrev = () => {
-    if (queue.length > 0 && currentTrack) {
-      const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
-      const prevIndex = (currentIndex - 1 + queue.length) % queue.length
-      playTrack(queue[prevIndex])
-    }
+    if (queue.length === 0 || !currentTrack) return
+    
+    const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
+    if (currentIndex === -1) return
+    
+    const prevIndex = (currentIndex - 1 + queue.length) % queue.length
+    playTrack(queue[prevIndex])
   }
 
   const seekTo = (time: number) => {
@@ -150,8 +198,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const toggleMute = () => {
     if (audioRef.current) {
-      audioRef.current.volume = isMuted ? volume : 0
-      setIsMuted(!isMuted)
+      if (isMuted) {
+        audioRef.current.volume = volume
+        setIsMuted(false)
+      } else {
+        audioRef.current.volume = 0
+        setIsMuted(true)
+      }
     }
   }
 
@@ -184,8 +237,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       volume,
       isMuted,
       queue,
-      isPlayerVisible,
-      setIsPlayerVisible,
       playTrack,
       pauseTrack,
       resumeTrack,

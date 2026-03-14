@@ -30,7 +30,7 @@ export default function TracksPage() {
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")
   const { user } = useAuth()
-  const { playTrack, currentTrack, isPlaying } = usePlayer()
+  const { playTrack, currentTrack, isPlaying, addToQueue } = usePlayer()
   const supabase = createClient()
 
   useEffect(() => {
@@ -139,6 +139,19 @@ export default function TracksPage() {
     }
 
     fetchTracks()
+  }
+
+  const handlePlay = (track: Track) => {
+    // Добавляем в очередь все треки для возможности переключения
+    if (filteredTracks.length > 0) {
+      filteredTracks.forEach(t => {
+        if (t.id !== track.id) {
+          addToQueue(t)
+        }
+      })
+    }
+    // Запускаем выбранный трек
+    playTrack(track)
   }
 
   const formatDuration = (seconds: number) => {
@@ -262,7 +275,7 @@ export default function TracksPage() {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => playTrack(track)}
+                    onClick={() => handlePlay(track)}
                     className={`p-2 sm:p-2.5 rounded-full ${
                       currentTrack?.id === track.id && isPlaying
                         ? 'bg-accent text-accent-foreground'
