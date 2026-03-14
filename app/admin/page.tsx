@@ -50,7 +50,6 @@ export default function AdminPage() {
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [checkingAdmin, setCheckingAdmin] = useState(true)
   
   const [formData, setFormData] = useState({
     title: "",
@@ -67,24 +66,21 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (!user) {
-        setCheckingAdmin(false)
-        router.push("/")
-        return
-      }
+    if (!user) {
+      // Пользователь ещё не загрузился — ждём
+      return
+    }
 
+    const checkAdmin = async () => {
       if (user.email === ADMIN_EMAIL) {
         setIsAdmin(true)
-        fetchTracks()
+        await fetchTracks()
       } else {
         router.push("/")
       }
-
-      setCheckingAdmin(false)
     }
 
-    checkAdminStatus()
+    checkAdmin()
   }, [user])
 
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -251,7 +247,7 @@ export default function AdminPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  if (checkingAdmin || loading) {
+  if (!user || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -259,7 +255,7 @@ export default function AdminPage() {
     )
   }
 
-  if (!user || !isAdmin) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <motion.div
@@ -406,11 +402,7 @@ export default function AdminPage() {
           </motion.button>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : tracks.length === 0 ? (
+        {tracks.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
