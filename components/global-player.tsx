@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Play,
@@ -32,13 +32,7 @@ export function GlobalPlayer() {
   } = usePlayer()
 
   const [isVisible, setIsVisible] = useState(true)
-  const [hasPlayedOnce, setHasPlayedOnce] = useState(false)
-
-  useEffect(() => {
-    if (currentTrack && isPlaying) {
-      setHasPlayedOnce(true)
-    }
-  }, [currentTrack, isPlaying])
+  const progressRef = useRef<HTMLInputElement>(null)
 
   if (!currentTrack) return null
 
@@ -105,6 +99,7 @@ export function GlobalPlayer() {
               <div className="w-full flex items-center gap-2 mb-2">
                 <span className="text-xs text-muted-foreground w-8 text-right">{formatTime(currentTime)}</span>
                 <input
+                  ref={progressRef}
                   type="range"
                   min={0}
                   max={duration || 0}
@@ -126,7 +121,10 @@ export function GlobalPlayer() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={playPrev}
+                  onClick={() => {
+                    console.log("Prev clicked")
+                    playPrev()
+                  }}
                   className="p-1.5 md:p-2 rounded-full hover:bg-secondary/50 transition-colors"
                 >
                   <SkipBack size={18} className="md:w-5 md:h-5" />
@@ -135,7 +133,14 @@ export function GlobalPlayer() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={isPlaying ? pauseTrack : resumeTrack}
+                  onClick={() => {
+                    console.log("Play/Pause clicked")
+                    if (isPlaying) {
+                      pauseTrack()
+                    } else {
+                      resumeTrack()
+                    }
+                  }}
                   className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground flex items-center justify-center shadow-lg"
                 >
                   {isPlaying ? <Pause size={16} className="md:w-5 md:h-5" /> : <Play size={16} className="md:w-5 md:h-5 ml-0.5" />}
@@ -144,7 +149,10 @@ export function GlobalPlayer() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={playNext}
+                  onClick={() => {
+                    console.log("Next clicked")
+                    playNext()
+                  }}
                   className="p-1.5 md:p-2 rounded-full hover:bg-secondary/50 transition-colors"
                 >
                   <SkipForward size={18} className="md:w-5 md:h-5" />
