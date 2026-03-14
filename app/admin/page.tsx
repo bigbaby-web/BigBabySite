@@ -52,7 +52,6 @@ export default function AdminPage() {
     title: "",
     artist: "Big Baby",
     genre: "",
-    duration: 0,
     cover_url: "",
     audio_url: "",
     is_published: true
@@ -61,8 +60,8 @@ export default function AdminPage() {
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [audioDuration, setAudioDuration] = useState(0)
 
-  // Проверка доступа
   useEffect(() => {
     if (!loading) {
       if (!user) {
@@ -95,115 +94,112 @@ export default function AdminPage() {
     setTracksLoading(false)
   }
 
-  const uploadFile = async (file: File, bucket: string, folder: string): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+  const getAudioDuration = (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      const audio = new Audio()
+      audio.src = URL.createObjectURL(file)
+      audio.addEventListener('loadedmetadata', () => {
+        resolve(Math.round(audio.duration))
+        URL.revokeObjectURL(audio.src)
+      })
+    })
+  }
 
-    console.log("📤 Начинаем загрузку файла:")
-    console.log("   - Bucket:", bucket)
-    console.log("   - Путь:", fileName)
-    console.log("   - Размер файла:", file.size, "bytes")
-    console.log("   - Тип файла:", file.type)
+  const uploadFile = async (file: File, bucket: string, folder: string): Promise<string | null> => {
+    // Очищаем имя файла
+    const cleanName = file.name
+      .replace(/[^a-zA-Z0-9.]/g, '_')
+      .toLowerCase()
+    const fileName = `${folder}/${Date.now()}-${cleanName}`
 
     try {
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(fileName, file)
 
       if (uploadError) {
-        console.error("❌ Ошибка загрузки:", uploadError)
-        console.error("   - Сообщение:", uploadError.message)
-        console.error("   - Детали:", JSON.stringify(uploadError, null, 2))
+        console.error("Upload error:", uploadError)
         return null
       }
-
-      console.log("✅ Файл успешно загружен:", data)
 
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(fileName)
 
-      console.log("🔗 Публичный URL:", publicUrl)
       return publicUrl
     } catch (err) {
-      console.error("💥 Неожиданная ошибка:", err)
+      console.error("Upload error:", err)
       return null
+    }
+  }
+
+  const handleAudioFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAudioFile(file)
+      // Получаем длительность аудио
+      const duration = await getAudioDuration(file)
+      setAudioDuration(duration)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setUploading(true)
-    console.log("🚀 Начинаем сохранение трека...")
 
     try {
       let audioUrl = formData.audio_url
       let coverUrl = formData.cover_url
+      let duration = editingTrack?.duration || 0
 
       if (audioFile) {
-        console.log("🎵 Загружаем аудиофайл...")
         const uploadedAudioUrl = await uploadFile(audioFile, "tracks", "audio")
         if (uploadedAudioUrl) {
           audioUrl = uploadedAudioUrl
-          console.log("✅ Аудио загружено, URL:", audioUrl)
-        } else {
-          console.log("❌ Не удалось загрузить аудио")
+          duration = audioDuration
         }
       }
 
       if (coverFile) {
-        console.log("🖼️ Загружаем обложку...")
         const uploadedCoverUrl = await uploadFile(coverFile, "tracks", "covers")
-        if (uploadedCoverUrl) {
-          coverUrl = uploadedCoverUrl
-          console.log("✅ Обложка загружена, URL:", coverUrl)
-        } else {
-          console.log("❌ Не удалось загрузить обложку")
-        }
+        if (uploadedCoverUrl) coverUrl = uploadedCoverUrl
       }
 
       const trackData = {
         title: formData.title,
         artist: formData.artist,
         genre: formData.genre,
-        duration: formData.duration,
+        duration: duration,
         cover_url: coverUrl || null,
         audio_url: audioUrl || null,
         is_published: formData.is_published,
         user_id: user?.id
       }
 
-      console.log("📝 Данные трека для сохранения:", trackData)
-
       if (editingTrack) {
-        console.log("✏️ Обновляем существующий трек:", editingTrack.id)
         const { error } = await supabase
           .from("tracks")
           .update(trackData)
           .eq("id", editingTrack.id)
 
         if (error) throw error
-        console.log("✅ Трек обновлен")
         showNotification('success', 'Трек успешно обновлен!')
       } else {
-        console.log("➕ Добавляем новый трек")
         const { error } = await supabase
           .from("tracks")
           .insert([trackData])
 
         if (error) throw error
-        console.log("✅ Трек добавлен")
         showNotification('success', 'Трек успешно добавлен!')
       }
 
       resetForm()
       fetchTracks()
     } catch (error) {
-      console.error("❌ Ошибка сохранения трека:", error)
+      console.error("Error saving track:", error)
       showNotification('error', 'Ошибка сохранения трека')
     } finally {
       setUploading(false)
-      console.log("🏁 Процесс сохранения завершен")
     }
   }
 
@@ -244,13 +240,13 @@ export default function AdminPage() {
       title: "",
       artist: "Big Baby",
       genre: "",
-      duration: 0,
       cover_url: "",
       audio_url: "",
       is_published: true
     })
     setAudioFile(null)
     setCoverFile(null)
+    setAudioDuration(0)
     setShowAddModal(false)
     setEditingTrack(null)
   }
@@ -261,11 +257,11 @@ export default function AdminPage() {
       title: track.title,
       artist: track.artist,
       genre: track.genre,
-      duration: track.duration,
       cover_url: track.cover_url || "",
       audio_url: track.audio_url || "",
       is_published: track.is_published
     })
+    setAudioDuration(track.duration)
     setShowAddModal(true)
   }
 
@@ -288,7 +284,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24">
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -562,26 +558,15 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Длительность (секунды)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-border/50 focus:border-primary/50 focus:outline-none transition-colors"
-                    placeholder="180"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Аудио файл</label>
+                  <label className="block text-sm font-medium mb-2">Аудио файл *</label>
                   <div className="relative">
                     <input
                       type="file"
                       accept="audio/*"
-                      onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
+                      onChange={handleAudioFileChange}
                       className="hidden"
                       id="audio-upload"
+                      required={!editingTrack}
                     />
                     <label
                       htmlFor="audio-upload"
@@ -593,6 +578,14 @@ export default function AdminPage() {
                       </span>
                     </label>
                   </div>
+                  {audioDuration > 0 && (
+                    <p className="text-xs text-green-500 mt-1">
+                      Длительность: {formatDuration(audioDuration)}
+                    </p>
+                  )}
+                  {formData.audio_url && !audioFile && (
+                    <p className="text-xs text-muted-foreground mt-1">Текущий файл загружен</p>
+                  )}
                 </div>
 
                 <div>
