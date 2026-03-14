@@ -38,17 +38,16 @@ interface Track {
 }
 
 export default function AdminPage() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, loading } = useAuth()
   const router = useRouter()
   const supabase = createClient()
   
   const [tracks, setTracks] = useState<Track[]>([])
-  const [loading, setLoading] = useState(true)
+  const [tracksLoading, setTracksLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [checkingAdmin, setCheckingAdmin] = useState(true)
   
   const [formData, setFormData] = useState({
     title: "",
@@ -64,33 +63,22 @@ export default function AdminPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
+  // Ждём загрузки пользователя
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (!user) {
-        setCheckingAdmin(false)
-        router.push("/")
-        return
-      }
-
-      // Check if this user is the first registered user (admin)
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, created_at")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single()
-
-      if (data && data.id === user.id) {
-        setIsAdmin(true)
-        fetchTracks()
-      } else {
-        router.push("/")
-      }
-      setCheckingAdmin(false)
+    if (loading) return // если ещё грузится - ждём
+    
+    if (!user) {
+      router.push("/")
+      return
     }
 
-    checkAdminStatus()
-  }, [user, router])
+    if (user.email === "bigbaby.xyz@gmail.com") {
+      setIsAdmin(true)
+      fetchTracks()
+    } else {
+      router.push("/")
+    }
+  }, [user, loading, router])
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message })
@@ -109,7 +97,7 @@ export default function AdminPage() {
     } else {
       setTracks(data || [])
     }
-    setLoading(false)
+    setTracksLoading(false)
   }
 
   const uploadFile = async (file: File, bucket: string, folder: string): Promise<string | null> => {
@@ -140,13 +128,11 @@ export default function AdminPage() {
       let audioUrl = formData.audio_url
       let coverUrl = formData.cover_url
 
-      // Upload audio file if selected
       if (audioFile) {
         const uploadedAudioUrl = await uploadFile(audioFile, "tracks", "audio")
         if (uploadedAudioUrl) audioUrl = uploadedAudioUrl
       }
 
-      // Upload cover file if selected
       if (coverFile) {
         const uploadedCoverUrl = await uploadFile(coverFile, "tracks", "covers")
         if (uploadedCoverUrl) coverUrl = uploadedCoverUrl
@@ -258,7 +244,8 @@ export default function AdminPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  if (checkingAdmin || loading) {
+  // Показываем загрузку, пока проверяем пользователя
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -266,7 +253,13 @@ export default function AdminPage() {
     )
   }
 
-  if (!user || !isAdmin) {
+  // Если нет пользователя - редирект (но это уже обработано в useEffect)
+  if (!user) {
+    return null
+  }
+
+  // Если не админ - показываем заглушку
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <motion.div
@@ -277,7 +270,7 @@ export default function AdminPage() {
           <Shield className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
           <h2 className="text-2xl font-bold mb-2">Доступ запрещен</h2>
           <p className="text-muted-foreground mb-6">
-            Эта страница доступна только администратору (первому зарегистрированному пользователю)
+            Эта страница доступна только администратору
           </p>
           <Link href="/">
             <motion.button
@@ -295,7 +288,6 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Notification */}
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -318,7 +310,6 @@ export default function AdminPage() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -350,7 +341,6 @@ export default function AdminPage() {
       </header>
 
       <main className="container mx-auto px-6 py-8">
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -403,7 +393,6 @@ export default function AdminPage() {
           </motion.div>
         </div>
 
-        {/* Add Track Button */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Управление треками</h2>
           <motion.button
@@ -417,8 +406,7 @@ export default function AdminPage() {
           </motion.button>
         </div>
 
-        {/* Tracks List */}
-        {loading ? (
+        {tracksLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
@@ -450,7 +438,6 @@ export default function AdminPage() {
                 transition={{ delay: index * 0.05 }}
                 className="backdrop-blur-xl bg-card/30 border border-border/50 rounded-2xl p-4 flex items-center gap-4"
               >
-                {/* Cover */}
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/30 to-cyan-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {track.cover_url ? (
                     <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
@@ -459,7 +446,6 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold truncate">{track.title}</h3>
                   <p className="text-sm text-muted-foreground">{track.artist} • {track.genre}</p>
@@ -468,7 +454,6 @@ export default function AdminPage() {
                   </p>
                 </div>
 
-                {/* Status */}
                 <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                   track.is_published 
                     ? 'bg-green-500/20 text-green-400'
@@ -477,7 +462,6 @@ export default function AdminPage() {
                   {track.is_published ? 'Опубликован' : 'Скрыт'}
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2">
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -515,7 +499,6 @@ export default function AdminPage() {
         )}
       </main>
 
-      {/* Add/Edit Modal */}
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -593,7 +576,6 @@ export default function AdminPage() {
                   />
                 </div>
 
-                {/* Audio File Upload */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Аудио файл</label>
                   <div className="relative">
@@ -614,12 +596,8 @@ export default function AdminPage() {
                       </span>
                     </label>
                   </div>
-                  {formData.audio_url && !audioFile && (
-                    <p className="text-xs text-muted-foreground mt-1">Текущий файл загружен</p>
-                  )}
                 </div>
 
-                {/* Cover Image Upload */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Обложка</label>
                   <div className="relative">
@@ -640,12 +618,8 @@ export default function AdminPage() {
                       </span>
                     </label>
                   </div>
-                  {formData.cover_url && !coverFile && (
-                    <p className="text-xs text-muted-foreground mt-1">Текущая обложка загружена</p>
-                  )}
                 </div>
 
-                {/* Publish Toggle */}
                 <div className="flex items-center justify-between py-3">
                   <span className="font-medium">Опубликовать сразу</span>
                   <button
@@ -661,7 +635,6 @@ export default function AdminPage() {
                   </button>
                 </div>
 
-                {/* Submit Button */}
                 <motion.button
                   type="submit"
                   disabled={uploading}
