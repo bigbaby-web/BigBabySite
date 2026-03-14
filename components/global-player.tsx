@@ -57,13 +57,11 @@ export function GlobalPlayer() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         onClick={() => setIsVisible(true)}
-        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-2xl flex items-center gap-2 hover:shadow-3xl transition-shadow"
+        className="fixed bottom-4 right-4 z-50 w-12 h-12 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-2xl flex items-center justify-center hover:shadow-3xl transition-shadow md:bottom-6 md:right-6 md:w-14 md:h-14"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <Play className="w-5 h-5" />
-        <span className="font-medium">Показать плеер</span>
-        <ChevronUp className="w-5 h-5" />
+        <Play className="w-5 h-5 md:w-6 md:h-6" />
       </motion.button>
     )
   }
@@ -75,90 +73,95 @@ export function GlobalPlayer() {
       exit={{ y: 100 }}
       className="fixed bottom-0 left-0 right-0 z-50"
     >
-      <motion.div
-        className="backdrop-blur-xl bg-glass border-t border-glass-border shadow-2xl"
-      >
-        <div className="max-w-7xl mx-auto px-4 py-3 relative">
-          {/* Кнопка скрытия */}
+      <motion.div className="backdrop-blur-xl bg-glass border-t border-glass-border shadow-2xl">
+        <div className="px-3 py-2 md:px-4 md:py-3 relative">
+          {/* Одна кнопка скрытия - справа вверху */}
           <button
             onClick={() => setIsVisible(false)}
-            className="absolute -top-3 right-6 bg-primary text-primary-foreground rounded-full p-1 shadow-lg hover:bg-primary/90 transition-colors"
+            className="absolute -top-3 right-3 md:right-6 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg hover:bg-primary/90 transition-colors z-10"
             title="Скрыть плеер"
           >
-            <ChevronDown size={18} />
+            <ChevronDown size={16} className="md:w-4 md:h-4" />
           </button>
 
-          <div className="flex items-center">
-            {/* Информация о треке */}
-            <div className="flex items-center gap-3 w-64">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/30 to-cyan-500/30 flex items-center justify-center overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
+            {/* Информация о треке - сверху на мобилках */}
+            <div className="flex items-center gap-2 md:w-64 pr-8 md:pr-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-gradient-to-br from-primary/30 to-cyan-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {currentTrack.cover_url ? (
                   <img src={currentTrack.cover_url} alt={currentTrack.title} className="w-full h-full object-cover" />
                 ) : (
-                  <Music className="w-6 h-6 text-primary" />
+                  <Music className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-semibold truncate">{currentTrack.title}</h4>
-                <p className="text-sm text-muted-foreground truncate">{currentTrack.artist}</p>
+                <h4 className="font-semibold text-sm md:text-base truncate">{currentTrack.title}</h4>
+                <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
               </div>
             </div>
 
-            {/* Управление */}
+            {/* Управление и прогресс */}
             <div className="flex-1 flex flex-col items-center">
-              <div className="flex items-center gap-4 mb-2">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={playPrev}
-                  className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
-                >
-                  <SkipBack size={20} />
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={isPlaying ? pauseTrack : resumeTrack}
-                  className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
-                >
-                  {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={playNext}
-                  className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
-                >
-                  <SkipForward size={20} />
-                </motion.button>
-              </div>
-
-              {/* Прогресс */}
-              <div className="flex items-center gap-2 w-full max-w-md">
-                <span className="text-xs text-muted-foreground">{formatTime(currentTime)}</span>
+              {/* Прогресс - виден всегда */}
+              <div className="w-full flex items-center gap-2 mb-2 md:mb-2">
+                <span className="text-xs text-muted-foreground w-8 text-right">{formatTime(currentTime)}</span>
                 <input
                   type="range"
                   min={0}
                   max={duration || 0}
                   value={currentTime}
                   onChange={(e) => seekTo(parseFloat(e.target.value))}
-                  className="flex-1 h-1 bg-secondary rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+                  className="flex-1 h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer 
+                    [&::-webkit-slider-thumb]:appearance-none 
+                    [&::-webkit-slider-thumb]:w-3 
+                    [&::-webkit-slider-thumb]:h-3 
+                    [&::-webkit-slider-thumb]:rounded-full 
+                    [&::-webkit-slider-thumb]:bg-primary
+                    [&::-webkit-slider-thumb]:shadow-md"
                 />
-                <span className="text-xs text-muted-foreground">{formatTime(duration)}</span>
+                <span className="text-xs text-muted-foreground w-8">{formatTime(duration)}</span>
+              </div>
+
+              {/* Кнопки управления */}
+              <div className="flex items-center gap-4 md:gap-6">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={playPrev}
+                  className="p-1.5 md:p-2 rounded-full hover:bg-secondary/50 transition-colors"
+                >
+                  <SkipBack size={18} className="md:w-5 md:h-5" />
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={isPlaying ? pauseTrack : resumeTrack}
+                  className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground flex items-center justify-center shadow-lg"
+                >
+                  {isPlaying ? <Pause size={16} className="md:w-5 md:h-5" /> : <Play size={16} className="md:w-5 md:h-5 ml-0.5" />}
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={playNext}
+                  className="p-1.5 md:p-2 rounded-full hover:bg-secondary/50 transition-colors"
+                >
+                  <SkipForward size={18} className="md:w-5 md:h-5" />
+                </motion.button>
               </div>
             </div>
 
-            {/* Громкость */}
-            <div className="w-64 flex items-center justify-end gap-2">
+            {/* Громкость - справа на десктопе, внизу на мобилках */}
+            <div className="flex items-center justify-center gap-2 mt-2 md:mt-0 md:w-48 md:justify-end">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleMute}
-                className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
+                className="p-1.5 md:p-2 rounded-full hover:bg-secondary/50 transition-colors"
               >
-                {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                {isMuted || volume === 0 ? <VolumeX size={16} className="md:w-5 md:h-5" /> : <Volume2 size={16} className="md:w-5 md:h-5" />}
               </motion.button>
               
               <input
@@ -168,7 +171,12 @@ export function GlobalPlayer() {
                 step={0.01}
                 value={isMuted ? 0 : volume}
                 onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                className="w-20 h-1 bg-secondary rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+                className="w-16 md:w-20 h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer 
+                  [&::-webkit-slider-thumb]:appearance-none 
+                  [&::-webkit-slider-thumb]:w-3 
+                  [&::-webkit-slider-thumb]:h-3 
+                  [&::-webkit-slider-thumb]:rounded-full 
+                  [&::-webkit-slider-thumb]:bg-primary"
               />
             </div>
           </div>
