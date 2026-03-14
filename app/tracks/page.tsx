@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Music, Play, Heart, MessageCircle } from "lucide-react"
+import { Music, Play, Pause, Heart, MessageCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
 
 interface Track {
   id: string
@@ -26,16 +25,30 @@ export default function TracksPage() {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [playingTrack, setPlayingTrack] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const { user } = useAuth()
-  const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
     fetchTracks()
   }, [user])
 
+  useEffect(() => {
+    // Создаем аудио элемент при монтировании
+    audioRef.current = new Audio()
+    audioRef.current.onended = () => {
+      setPlayingTrack(null)
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [])
+
   const fetchTracks = async () => {
-    // Получаем треки
     const { data: tracksData, error: tracksError } = await supabase
       .from("tracks")
       .select("*")
@@ -48,7 +61,6 @@ export default function TracksPage() {
       return
     }
 
-    // Если пользователь авторизован, получаем его лайки
     if (user) {
       const { data: likesData } = await supabase
         .from("likes")
@@ -57,7 +69,6 @@ export default function TracksPage() {
 
       const likedTrackIds = new Set(likesData?.map(l => l.track_id) || [])
 
-      // Добавляем информацию о лайках к трекам
       const tracksWithLikes = await Promise.all(
         (tracksData || []).map(async (track) => {
           const { count } = await supabase
@@ -75,7 +86,6 @@ export default function TracksPage() {
 
       setTracks(tracksWithLikes)
     } else {
-      // Если не авторизован, просто показываем треки без информации о лайках
       const tracksWithLikes = await Promise.all(
         (tracksData || []).map(async (track) => {
           const { count } = await supabase
@@ -98,43 +108,60 @@ export default function TracksPage() {
 
   const handleLike = async (trackId: string, currentlyLiked: boolean) => {
     if (!user) {
-      // Если не авторизован, показываем модалку входа
-      // Здесь можно вызвать onOpenAuth из пропсов, но нужно передать
       alert("Пожалуйста, войдите чтобы ставить лайки")
       return
     }
 
     if (currentlyLiked) {
-      // Удаляем лайк
       await supabase
         .from("likes")
         .delete()
         .eq("user_id", user.id)
         .eq("track_id", trackId)
     } else {
-      // Добавляем лайк
       await supabase
         .from("likes")
         .insert({ user_id: user.id, track_id: trackId })
     }
 
-    // Обновляем список треков
     fetchTracks()
   }
 
-  const handlePlay = (track: Track) => {
+  const handlePlay = async (track: Track) => {
     if (!track.audio_url) {
-      alert("Аудио файл еще не загружен")
+      alert("Аудио файл не загружен")
       return
     }
 
+    if (!audioRef.current) return
+
     if (playingTrack === track.id) {
-      // Останавливаем
+      // Останавливаем текущий трек
+      audioRef.current.pause()
       setPlayingTrack(null)
     } else {
-      // Запускаем
-      setPlayingTrack(track.id)
-      // Здесь можно добавить реальный плеер
+      // Останавливаем предыдущий трек если был
+      if (playingTrack) {
+        audioRef.current.pause()
+      }
+      
+      try {
+        // Запускаем новый
+        audioRef.current.src = track.audio_url
+        await audioRef.current.play()
+        setPlayingTrack(track.id)
+
+        // Увеличиваем счетчик прослушиваний
+        await supabase
+          .from("tracks")
+          .update({ plays_count: (track.plays_count || 0) + 1 })
+          .eq("id", track.id)
+        
+        fetchTracks()
+      } catch (error) {
+        console.error("Ошибка воспроизведения:", error)
+        alert("Не удалось воспроизвести аудио. Проверьте ссылку на файл.")
+      }
     }
   }
 
@@ -155,7 +182,6 @@ export default function TracksPage() {
   return (
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -165,11 +191,10 @@ export default function TracksPage() {
             Мои Треки
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Слушай, комментируй и наслаждайся уникальной музыкой, созданной на стыке творчества и ИИ
+            Слушай, комментируй и наслаждайся уникальной музыкой
           </p>
         </motion.div>
 
-        {/* Filters */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -187,7 +212,6 @@ export default function TracksPage() {
           </button>
         </motion.div>
 
-        {/* Tracks Grid */}
         {tracks.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -196,7 +220,7 @@ export default function TracksPage() {
           >
             <Music className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold mb-2">Скоро здесь появятся треки</h3>
-            <p className="text-muted-foreground">Новая музыка уже в работе. Следите за обновлениями!</p>
+            <p className="text-muted-foreground">Новая музыка уже в работе</p>
           </motion.div>
         ) : (
           <div className="grid gap-4">
@@ -208,7 +232,6 @@ export default function TracksPage() {
                 transition={{ delay: index * 0.05 }}
                 className="backdrop-blur-xl bg-card/30 border border-border/50 rounded-2xl p-4 flex items-center gap-4 hover:bg-card/50 transition-colors"
               >
-                {/* Cover */}
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/30 to-cyan-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {track.cover_url ? (
                     <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
@@ -217,7 +240,6 @@ export default function TracksPage() {
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-lg truncate">{track.title}</h3>
                   <p className="text-sm text-muted-foreground">{track.artist} • {track.genre}</p>
@@ -227,7 +249,6 @@ export default function TracksPage() {
                   </p>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleLike(track.id, track.liked || false)}
@@ -248,7 +269,11 @@ export default function TracksPage() {
                         : 'bg-primary text-primary-foreground'
                     }`}
                   >
-                    <Play className="w-5 h-5" />
+                    {playingTrack === track.id ? (
+                      <Pause className="w-5 h-5" />
+                    ) : (
+                      <Play className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </motion.div>
