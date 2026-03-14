@@ -81,7 +81,7 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
                       )}
                     </div>
                     <span className="text-sm font-medium text-foreground">
-                      Мой профиль
+                      {profile?.username || "Профиль"}
                     </span>
                   </motion.div>
                 </Link>
@@ -154,57 +154,65 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
                 ))}
                 
                 {/* Mobile Auth */}
-                {user ? (
-                  <div className="flex items-center gap-2 pt-2">
-                    <Link href="/profile" className="flex-1" onClick={() => setIsMobileMenuOpen(false)}>
-                      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-secondary/50 hover:bg-secondary/70 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                          {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <User className="w-5 h-5 text-primary" />
-                          )}
+                <div className="pt-2">
+                  {user ? (
+                    <div className="flex items-center gap-2">
+                      <Link href="/profile" className="flex-1" onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-secondary/50 hover:bg-secondary/70 transition-colors">
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                            {profile?.avatar_url ? (
+                              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-5 h-5 text-primary" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-foreground">
+                              {profile?.username || "Профиль"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {user.email}
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-sm font-medium text-foreground">
-                          Мой профиль
-                        </span>
-                      </div>
-                    </Link>
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        signOut()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="px-4 py-3 rounded-xl bg-destructive/10 text-destructive"
-                    >
-                      <LogOut className="w-5 h-5" />
-                    </motion.button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2 pt-2">
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        onOpenAuth("login")
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="flex-1 px-4 py-3 rounded-xl text-center font-medium bg-secondary/50 text-foreground"
-                    >
-                      Войти
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        onOpenAuth("register")
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="flex-1 px-4 py-3 rounded-xl text-center font-medium bg-primary text-primary-foreground"
-                    >
-                      Регистрация
-                    </motion.button>
-                  </div>
-                )}
+                      </Link>
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          signOut()
+                          setIsMobileMenuOpen(false)
+                        }}
+                        className="p-4 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                        title="Выйти"
+                      >
+                        <LogOut className="w-5 h-5" />
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          onOpenAuth("login")
+                          setIsMobileMenuOpen(false)
+                        }}
+                        className="flex-1 px-4 py-3 rounded-xl text-center font-medium bg-secondary/50 text-foreground hover:bg-secondary/70 transition-colors"
+                      >
+                        Войти
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          onOpenAuth("register")
+                          setIsMobileMenuOpen(false)
+                        }}
+                        className="flex-1 px-4 py-3 rounded-xl text-center font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        Регистрация
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
