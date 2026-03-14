@@ -24,6 +24,8 @@ interface PlayerContextType {
   volume: number
   isMuted: boolean
   queue: Track[]
+  isPlayerVisible: boolean
+  setIsPlayerVisible: (visible: boolean) => void
   playTrack: (track: Track) => Promise<void>
   pauseTrack: () => void
   resumeTrack: () => Promise<void>
@@ -47,6 +49,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isMuted, setIsMuted] = useState(false)
   const [queue, setQueue] = useState<Track[]>([])
   const [hasIncrementedPlay, setHasIncrementedPlay] = useState(false)
+  const [isPlayerVisible, setIsPlayerVisible] = useState(true)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const supabase = createClient()
 
@@ -81,27 +84,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playTrack = async (track: Track) => {
     if (!audioRef.current) return
 
-    // Если это тот же трек
     if (currentTrack?.id === track.id) {
       audioRef.current.play()
       return
     }
 
-    // Сбрасываем флаг для нового трека
     setHasIncrementedPlay(false)
     
-    // Останавливаем текущий трек
     audioRef.current.pause()
     
-    // Загружаем новый
     audioRef.current.src = track.audio_url || ''
     audioRef.current.volume = isMuted ? 0 : volume
     
     try {
       await audioRef.current.play()
       setCurrentTrack(track)
+      setIsPlayerVisible(true)
       
-      // Увеличиваем счетчик только один раз при начале воспроизведения
       if (!hasIncrementedPlay) {
         await supabase
           .from("tracks")
@@ -185,6 +184,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       volume,
       isMuted,
       queue,
+      isPlayerVisible,
+      setIsPlayerVisible,
       playTrack,
       pauseTrack,
       resumeTrack,

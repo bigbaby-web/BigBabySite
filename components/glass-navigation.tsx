@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Menu, X, User, LogOut, Shield } from "lucide-react"
+import { Menu, X, User, LogOut, Shield, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { usePlayer } from "@/contexts/player-context"
 
 interface GlassNavigationProps {
   onOpenAuth: (type: "login" | "register") => void
@@ -23,6 +24,7 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
   const { user, loading, signOut } = useAuth()
+  const { currentTrack, isPlayerVisible, setIsPlayerVisible } = usePlayer()
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"
@@ -231,6 +233,28 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
           )}
         </AnimatePresence>
       </nav>
+
+      {/* Кнопка для скрытия/открытия плеера (только если есть трек) */}
+      {currentTrack && (
+        <motion.button
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed right-6 top-24 z-40 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:bg-primary/90 transition-colors"
+          onClick={() => setIsPlayerVisible(!isPlayerVisible)}
+        >
+          {isPlayerVisible ? (
+            <>
+              <ChevronDown size={18} />
+              <span className="text-sm font-medium">Скрыть плеер</span>
+            </>
+          ) : (
+            <>
+              <ChevronUp size={18} />
+              <span className="text-sm font-medium">Показать плеер</span>
+            </>
+          )}
+        </motion.button>
+      )}
     </motion.header>
   )
 }

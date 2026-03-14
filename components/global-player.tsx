@@ -25,6 +25,7 @@ export function GlobalPlayer() {
     duration,
     volume,
     isMuted,
+    isPlayerVisible,
     pauseTrack,
     resumeTrack,
     playNext,
@@ -34,12 +35,11 @@ export function GlobalPlayer() {
     changeVolume
   } = usePlayer()
 
-  const [isVisible, setIsVisible] = useState(true)
   const [isMinimized, setIsMinimized] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
   const progressRef = useRef<HTMLDivElement>(null)
 
-  if (!currentTrack) return null
+  if (!currentTrack || !isPlayerVisible) return null
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -48,25 +48,6 @@ export function GlobalPlayer() {
   }
 
   const progress = (currentTime / duration) * 100 || 0
-
-  // Кнопка для открытия плеера (когда он скрыт)
-  if (!isVisible) {
-    return (
-      <motion.button
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
-        onClick={() => setIsVisible(true)}
-        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-2xl flex items-center gap-2 hover:shadow-3xl transition-shadow"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <Play className="w-5 h-5" />
-        <span className="font-medium">Показать плеер</span>
-        <ChevronUp className="w-5 h-5" />
-      </motion.button>
-    )
-  }
 
   return (
     <motion.div
@@ -122,14 +103,6 @@ export function GlobalPlayer() {
             >
               {isMinimized ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
             </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1, y: 5 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsVisible(false)}
-              className="p-2 rounded-lg hover:bg-secondary/50 transition-colors"
-            >
-              <ChevronDown size={18} />
-            </motion.button>
           </div>
         </div>
 
@@ -170,7 +143,6 @@ export function GlobalPlayer() {
                       [&::-webkit-slider-thumb]:hover:scale-125
                       [&::-webkit-slider-thumb]:active:scale-90"
                   />
-                  {/* Анимированный фон прогресса */}
                   <motion.div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-primary to-accent rounded-full pointer-events-none"
                     style={{ width: `${progress}%` }}
@@ -203,7 +175,6 @@ export function GlobalPlayer() {
                   onClick={isPlaying ? pauseTrack : resumeTrack}
                   className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground flex items-center justify-center shadow-xl relative overflow-hidden"
                 >
-                  {/* Пульсирующий эффект при воспроизведении */}
                   {isPlaying && (
                     <motion.div
                       className="absolute inset-0 bg-white/20"
