@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    // Получаем текущую сессию при загрузке
     const getSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getSession()
 
+    // Слушаем изменения авторизации
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session)
@@ -98,10 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || 
-          `${window.location.origin}/`,
         data: {
           username,
+          display_name: username,
         },
       },
     })
