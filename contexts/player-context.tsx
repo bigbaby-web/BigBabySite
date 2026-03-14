@@ -46,6 +46,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
   const [queue, setQueue] = useState<Track[]>([])
+  const [hasIncrementedPlay, setHasIncrementedPlay] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const supabase = createClient()
 
@@ -61,6 +62,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     })
     
     audioRef.current.addEventListener('ended', () => {
+      setIsPlaying(false)
+      setHasIncrementedPlay(false)
       playNext()
     })
     
@@ -78,13 +81,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playTrack = async (track: Track) => {
     if (!audioRef.current) return
 
+    // Если это тот же трек
     if (currentTrack?.id === track.id) {
       audioRef.current.play()
       return
     }
 
+    // Сбрасываем флаг для нового трека
+    setHasIncrementedPlay(false)
+    
+    // Останавливаем текущий трек
     audioRef.current.pause()
     
+    // Загружаем новый
     audioRef.current.src = track.audio_url || ''
     audioRef.current.volume = isMuted ? 0 : volume
     
@@ -92,10 +101,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       await audioRef.current.play()
       setCurrentTrack(track)
       
-      await supabase
-        .from("tracks")
-        .update({ plays_count: (track.plays_count || 0) + 1 })
-        .eq("id", track.id)
+      // Увеличиваем счетчик только один раз при начале воспроизведения
+      if (!hasIncrementedPlay) {
+        await supabase
+          .from("tracks")
+          .update({ plays_count: (track.plays_count || 0) + 1 })
+          .eq("id", track.id)
+        setHasIncrementedPlay(true)
+      }
     } catch (error) {
       console.error("Ошибка воспроизведения:", error)
     }
