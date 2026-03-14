@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { 
   User, 
   Mail, 
@@ -13,6 +13,7 @@ import {
   Heart,
   MessageCircle,
   Music,
+  Shield,
   Loader2
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
@@ -33,6 +34,7 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [stats, setStats] = useState({ likes: 0, comments: 0 })
+  const [isAdmin, setIsAdmin] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setUsername(profile.username || "")
-      setDisplayName(profile.display_name || "")
+      setDisplayName((profile as { display_name?: string }).display_name || "")
       setAvatarPreview(profile.avatar_url)
     }
   }, [profile])
@@ -52,6 +54,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       fetchStats()
+      checkAdminStatus()
     }
   }, [user])
 
@@ -70,6 +73,26 @@ export default function ProfilePage() {
       })
     } catch (err) {
       console.error("Error fetching stats:", err)
+    }
+  }
+
+  const checkAdminStatus = async () => {
+    if (!user) return
+
+    try {
+      // Check if this is the first registered user
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, created_at")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .single()
+
+      if (data && !error && data.id === user.id) {
+        setIsAdmin(true)
+      }
+    } catch (err) {
+      console.error("Error checking admin status:", err)
     }
   }
 
@@ -92,6 +115,7 @@ export default function ProfilePage() {
     try {
       let avatarUrl = profile?.avatar_url
 
+      // Upload new avatar if selected
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop()
         const fileName = `${user.id}-${Date.now()}.${fileExt}`
@@ -108,6 +132,7 @@ export default function ProfilePage() {
         }
       }
 
+      // Update profile
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -133,7 +158,7 @@ export default function ProfilePage() {
   const cancelEdit = () => {
     setIsEditing(false)
     setUsername(profile?.username || "")
-    setDisplayName(profile?.display_name || "")
+    setDisplayName((profile as { display_name?: string })?.display_name || "")
     setAvatarPreview(profile?.avatar_url || null)
     setAvatarFile(null)
   }
@@ -158,6 +183,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen pt-28 pb-16 px-4">
+      {/* Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Image
           src="/graffiti-bg.jpg"
@@ -169,16 +195,20 @@ export default function ProfilePage() {
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto">
+        {/* Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="backdrop-blur-xl bg-glass border border-glass-border rounded-3xl overflow-hidden shadow-2xl"
         >
+          {/* Header Banner */}
           <div className="h-32 sm:h-40 bg-gradient-to-br from-primary/30 via-accent/20 to-primary/10 relative">
             <div className="absolute inset-0 bg-[url('/graffiti-bg.jpg')] bg-cover bg-center opacity-20" />
           </div>
 
+          {/* Profile Content */}
           <div className="px-6 sm:px-8 pb-8">
+            {/* Avatar */}
             <div className="relative -mt-16 sm:-mt-20 mb-6 flex justify-center sm:justify-start">
               <div className="relative group">
                 <motion.div
@@ -218,6 +248,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* User Info */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="flex-1 text-center sm:text-left">
                 {isEditing ? (
@@ -251,16 +282,23 @@ export default function ProfilePage() {
                   <>
                     <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
                       <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                        {displayName || username || "Пользователь"}
+                        {(profile as { display_name?: string })?.display_name || profile?.username || "Пользователь"}
                       </h1>
+                      {isAdmin && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-primary/20 text-primary rounded-full flex items-center gap-1">
+                          <Shield className="w-3 h-3" />
+                          Admin
+                        </span>
+                      )}
                     </div>
-                    {username && (
-                      <p className="text-muted-foreground">@{username}</p>
+                    {profile?.username && (
+                      <p className="text-muted-foreground">@{profile.username}</p>
                     )}
                   </>
                 )}
               </div>
 
+              {/* Action Buttons */}
               <div className="flex justify-center sm:justify-end gap-2">
                 {isEditing ? (
                   <>
@@ -284,27 +322,40 @@ export default function ProfilePage() {
                       {saving ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          Сохранить
-                        </>
+                        <Save className="w-4 h-4" />
                       )}
+                      Сохранить
                     </motion.button>
                   </>
                 ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsEditing(true)}
-                    className="px-4 py-2 rounded-xl bg-secondary/50 text-foreground font-medium flex items-center gap-2 hover:bg-secondary/70 transition-colors"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    Редактировать
-                  </motion.button>
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setIsEditing(true)}
+                      className="px-4 py-2 rounded-xl bg-secondary/50 text-foreground font-medium flex items-center gap-2 hover:bg-secondary/70 transition-colors"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Редактировать
+                    </motion.button>
+                    {isAdmin && (
+                      <Link href="/admin">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium flex items-center gap-2"
+                        >
+                          <Shield className="w-4 h-4" />
+                          Админ-панель
+                        </motion.button>
+                      </Link>
+                    )}
+                  </>
                 )}
               </div>
             </div>
 
+            {/* Info Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -341,6 +392,7 @@ export default function ProfilePage() {
               </motion.div>
             </div>
 
+            {/* Stats */}
             <div className="grid grid-cols-3 gap-4 mt-6">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -378,6 +430,7 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
+        {/* Quick Links */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
