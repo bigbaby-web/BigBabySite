@@ -63,20 +63,33 @@ export default function AdminPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  // Ждём загрузки пользователя
   useEffect(() => {
-    if (loading) return // если ещё грузится - ждём
-    
-    if (!user) {
-      router.push("/")
-      return
+    let isMounted = true
+
+    const checkAuth = async () => {
+      if (loading) return
+      
+      if (!user) {
+        router.push("/")
+        return
+      }
+
+      if (user.email === "bigbaby.xyz@gmail.com") {
+        if (isMounted) {
+          setIsAdmin(true)
+          fetchTracks()
+        }
+      } else {
+        if (isMounted) {
+          router.push("/")
+        }
+      }
     }
 
-    if (user.email === "bigbaby.xyz@gmail.com") {
-      setIsAdmin(true)
-      fetchTracks()
-    } else {
-      router.push("/")
+    checkAuth()
+
+    return () => {
+      isMounted = false
     }
   }, [user, loading, router])
 
@@ -244,7 +257,6 @@ export default function AdminPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Показываем загрузку, пока проверяем пользователя
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -253,12 +265,10 @@ export default function AdminPage() {
     )
   }
 
-  // Если нет пользователя - редирект (но это уже обработано в useEffect)
   if (!user) {
     return null
   }
 
-  // Если не админ - показываем заглушку
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
