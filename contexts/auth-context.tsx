@@ -7,10 +7,8 @@ import type { User, Session } from "@supabase/supabase-js"
 interface Profile {
   id: string
   username: string | null
-  display_name: string | null
   avatar_url: string | null
   created_at: string
-  updated_at: string
 }
 
 interface AuthContextType {
@@ -35,18 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = createClient()
 
   const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single()
-      
-      if (data && !error) {
-        setProfile(data)
-      }
-    } catch (err) {
-      console.error("Error fetching profile:", err)
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single()
+    
+    if (data) {
+      setProfile(data)
     }
   }
 
@@ -58,19 +52,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const getSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setSession(session)
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        }
-      } catch (err) {
-        console.error("Error getting session:", err)
-      } finally {
-        setLoading(false)
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
+      setUser(session?.user ?? null)
+      
+      if (session?.user) {
+        await fetchProfile(session.user.id)
       }
+      
+      setLoading(false)
     }
 
     getSession()
@@ -98,8 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || 
-          `${window.location.origin}/`,
         data: {
           username,
         },
