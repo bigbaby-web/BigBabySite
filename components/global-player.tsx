@@ -48,7 +48,7 @@ export function GlobalPlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Кнопка для открытия плеера (когда он скрыт)
+  // Если плеер скрыт - показываем только стрелочку
   if (!isVisible) {
     return (
       <motion.button
@@ -56,11 +56,11 @@ export function GlobalPlayer() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         onClick={() => setIsVisible(true)}
-        className="fixed bottom-4 right-4 z-50 w-12 h-12 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-2xl flex items-center justify-center hover:shadow-3xl transition-shadow md:bottom-6 md:right-6 md:w-14 md:h-14"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary text-primary-foreground rounded-full p-2 shadow-lg hover:bg-primary/90 transition-colors"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
       >
-        <Play className="w-5 h-5 md:w-6 md:h-6" />
+        <ChevronDown className="w-5 h-5 rotate-180" />
       </motion.button>
     )
   }
@@ -72,17 +72,17 @@ export function GlobalPlayer() {
       exit={{ y: 100 }}
       className="fixed bottom-0 left-0 right-0 z-50"
     >
-      <motion.div className="backdrop-blur-xl bg-glass border-t border-glass-border shadow-2xl">
-        <div className="px-3 py-2 md:px-4 md:py-3">
-          {/* Кнопка скрытия - теперь внизу справа на мобилках */}
-          <button
-            onClick={() => setIsVisible(false)}
-            className="absolute -top-3 right-3 md:top-auto md:bottom-16 md:right-4 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg hover:bg-primary/90 transition-colors z-10"
-            title="Скрыть плеер"
-          >
-            <ChevronDown size={16} className="md:w-4 md:h-4" />
-          </button>
+      <motion.div className="backdrop-blur-xl bg-glass border-t border-glass-border shadow-2xl relative">
+        {/* Стрелочка для скрытия - над плеером по центру */}
+        <button
+          onClick={() => setIsVisible(false)}
+          className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg hover:bg-primary/90 transition-colors z-10"
+          title="Скрыть плеер"
+        >
+          <ChevronDown size={16} />
+        </button>
 
+        <div className="px-3 py-2 md:px-4 md:py-3 pt-4">
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
             {/* Информация о треке */}
             <div className="flex items-center gap-2 md:w-64 pr-8 md:pr-0">
