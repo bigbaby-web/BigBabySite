@@ -1,10 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Music, Play, Pause, Heart, MessageCircle } from "lucide-react"
+import { Music, Play, Heart, MessageCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
+import { usePlayer } from "@/contexts/player-context"
+
+type FilterType = "all" | "popular" | "new"
 
 interface Track {
   id: string
@@ -23,10 +26,11 @@ interface Track {
 
 export default function TracksPage() {
   const [tracks, setTracks] = useState<Track[]>([])
+  const [filteredTracks, setFilteredTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
-  const [playingTrack, setPlayingTrack] = useState<string | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all")
   const { user } = useAuth()
+  const { playTrack, currentTrack, isPlaying } = usePlayer()
   const supabase = createClient()
 
   useEffect(() => {
@@ -34,19 +38,8 @@ export default function TracksPage() {
   }, [user])
 
   useEffect(() => {
-    // Создаем аудио элемент при монтировании
-    audioRef.current = new Audio()
-    audioRef.current.onended = () => {
-      setPlayingTrack(null)
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
-    }
-  }, [])
+    applyFilter()
+  }, [tracks, activeFilter])
 
   const fetchTracks = async () => {
     const { data: tracksData, error: tracksError } = await supabase
@@ -106,6 +99,27 @@ export default function TracksPage() {
     setLoading(false)
   }
 
+  const applyFilter = () => {
+    let filtered = [...tracks]
+
+    switch (activeFilter) {
+      case "popular":
+        filtered = filtered.sort((a, b) => (b.plays_count || 0) - (a.plays_count || 0))
+        break
+      case "new":
+        filtered = filtered.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        break
+      default:
+        filtered = filtered.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+    }
+
+    setFilteredTracks(filtered)
+  }
+
   const handleLike = async (trackId: string, currentlyLiked: boolean) => {
     if (!user) {
       alert("Пожалуйста, войдите чтобы ставить лайки")
@@ -127,60 +141,28 @@ export default function TracksPage() {
     fetchTracks()
   }
 
-  const handlePlay = async (track: Track) => {
-    if (!track.audio_url) {
-      alert("Аудио файл не загружен")
-      return
-    }
-
-    if (!audioRef.current) return
-
-    if (playingTrack === track.id) {
-      // Останавливаем текущий трек
-      audioRef.current.pause()
-      setPlayingTrack(null)
-    } else {
-      // Останавливаем предыдущий трек если был
-      if (playingTrack) {
-        audioRef.current.pause()
-      }
-      
-      try {
-        // Запускаем новый
-        audioRef.current.src = track.audio_url
-        await audioRef.current.play()
-        setPlayingTrack(track.id)
-
-        // Увеличиваем счетчик прослушиваний
-        await supabase
-          .from("tracks")
-          .update({ plays_count: (track.plays_count || 0) + 1 })
-          .eq("id", track.id)
-        
-        fetchTracks()
-      } catch (error) {
-        console.error("Ошибка воспроизведения:", error)
-        alert("Не удалось воспроизвести аудио. Проверьте ссылку на файл.")
-      }
-    }
-  }
-
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  const filterButtons: { id: FilterType; label: string }[] = [
+    { id: "all", label: "Все треки" },
+    { id: "popular", label: "Популярные" },
+    { id: "new", label: "Новые" },
+  ]
+
   if (loading) {
     return (
-      <div className="min-h-screen pt-24 pb-16 px-4 flex items-center justify-center">
+      <div className="min-h-screen pt-24 pb-32 px-4 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pt-24 pb-32 px-4">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -201,18 +183,24 @@ export default function TracksPage() {
           transition={{ delay: 0.1 }}
           className="flex gap-2 mb-8 justify-center"
         >
-          <button className="px-4 py-2 rounded-full bg-primary text-primary-foreground">
-            Все треки
-          </button>
-          <button className="px-4 py-2 rounded-full bg-secondary/50 text-foreground hover:bg-secondary/70">
-            Популярные
-          </button>
-          <button className="px-4 py-2 rounded-full bg-secondary/50 text-foreground hover:bg-secondary/70">
-            Новые
-          </button>
+          {filterButtons.map((button) => (
+            <motion.button
+              key={button.id}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setActiveFilter(button.id)}
+              className={`px-6 py-2.5 rounded-full font-medium transition-all ${
+                activeFilter === button.id
+                  ? "bg-primary text-primary-foreground shadow-lg"
+                  : "bg-secondary/50 text-foreground hover:bg-secondary/70"
+              }`}
+            >
+              {button.label}
+            </motion.button>
+          ))}
         </motion.div>
 
-        {tracks.length === 0 ? (
+        {filteredTracks.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -224,7 +212,7 @@ export default function TracksPage() {
           </motion.div>
         ) : (
           <div className="grid gap-4">
-            {tracks.map((track, index) => (
+            {filteredTracks.map((track, index) => (
               <motion.div
                 key={track.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -250,31 +238,37 @@ export default function TracksPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => handleLike(track.id, track.liked || false)}
                     className={`p-2 rounded-full hover:bg-primary/10 transition-colors ${
                       track.liked ? 'text-red-500' : 'text-muted-foreground'
                     }`}
                   >
                     <Heart className={`w-5 h-5 ${track.liked ? 'fill-current' : ''}`} />
-                  </button>
-                  <button className="p-2 rounded-full hover:bg-primary/10 transition-colors">
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-2 rounded-full hover:bg-primary/10 transition-colors"
+                  >
                     <MessageCircle className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handlePlay(track)}
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => playTrack(track)}
                     className={`p-2 rounded-full ${
-                      playingTrack === track.id
+                      currentTrack?.id === track.id && isPlaying
                         ? 'bg-accent text-accent-foreground'
                         : 'bg-primary text-primary-foreground'
                     }`}
                   >
-                    {playingTrack === track.id ? (
-                      <Pause className="w-5 h-5" />
-                    ) : (
-                      <Play className="w-5 h-5" />
-                    )}
-                  </button>
+                    <Play className="w-5 h-5" />
+                  </motion.button>
                 </div>
               </motion.div>
             ))}
