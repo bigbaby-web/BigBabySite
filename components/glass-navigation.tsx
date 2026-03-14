@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Menu, X, User, LogOut } from "lucide-react"
+import { Menu, X, User, LogOut, Shield } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
@@ -22,18 +22,34 @@ const navItems = [
 export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
-  const { user, profile, signOut, loading } = useAuth()
+  const { user, loading, signOut } = useAuth()
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"
     return pathname.startsWith(href)
   }
 
+  if (loading) {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-50 p-4 md:p-6">
+        <nav className="max-w-6xl mx-auto backdrop-blur-xl bg-glass border border-glass-border rounded-2xl px-4 md:px-6 py-3">
+          <div className="flex items-center justify-between">
+            <Link href="/">
+              <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                BIG BABY
+              </span>
+            </Link>
+            <div className="w-20 h-9 bg-secondary/50 rounded-xl animate-pulse" />
+          </div>
+        </nav>
+      </header>
+    )
+  }
+
   return (
     <motion.header
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
       className="fixed top-0 left-0 right-0 z-50 p-4 md:p-6"
     >
       <nav className="max-w-6xl mx-auto backdrop-blur-xl bg-glass border border-glass-border rounded-2xl px-4 md:px-6 py-3 shadow-lg">
@@ -42,7 +58,6 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
           <Link href="/">
             <motion.span
               whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent cursor-pointer"
             >
               BIG BABY
@@ -52,78 +67,83 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-2">
             {navItems.map((item) => (
-              <NavButton
-                key={item.id}
-                label={item.label}
-                href={item.href}
-                isActive={isActive(item.href)}
-              />
+              <Link key={item.id} href={item.href}>
+                <motion.span
+                  whileHover={{ scale: 1.05 }}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                    isActive(item.href)
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground/70 hover:text-foreground hover:bg-secondary/50"
+                  }`}
+                >
+                  {item.label}
+                </motion.span>
+              </Link>
             ))}
           </div>
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            {loading ? (
-              <div className="w-20 h-9 bg-secondary/50 rounded-xl animate-pulse" />
-            ) : user ? (
+            {user ? (
               <div className="flex items-center gap-3">
+                {/* Кнопка админ-панели (только для админа) */}
+                {user.email === "bigbaby.xyz@gmail.com" && (
+                  <Link href="/admin">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                    >
+                      <Shield className="w-4 h-4" />
+                      <span className="text-sm">Админ</span>
+                    </motion.button>
+                  </Link>
+                )}
+                
+                {/* Кнопка профиля */}
                 <Link href="/profile">
-                  <motion.div
+                  <motion.button
                     whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/50 hover:bg-secondary/70 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/50 hover:bg-secondary/70 transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                      {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-4 h-4 text-primary" />
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-foreground">
-                      Мой профиль
-                    </span>
-                  </motion.div>
+                    <User className="w-4 h-4" />
+                    <span className="text-sm">Профиль</span>
+                  </motion.button>
                 </Link>
+                
+                {/* Кнопка выхода */}
                 <motion.button
                   whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => signOut()}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                  onClick={signOut}
+                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                 >
                   <LogOut className="w-5 h-5" />
                 </motion.button>
               </div>
             ) : (
               <>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <button
                   onClick={() => onOpenAuth("login")}
-                  className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground"
                 >
                   Войти
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(176, 212, 255, 0.5)" }}
-                  whileTap={{ scale: 0.95 }}
+                </button>
+                <button
                   onClick={() => onOpenAuth("register")}
-                  className="px-5 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all shadow-md"
+                  className="px-5 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-xl hover:bg-primary/90"
                 >
                   Регистрация
-                </motion.button>
+                </button>
               </>
             )}
           </div>
 
           {/* Mobile Menu Button */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden p-2 rounded-xl bg-secondary/50 text-foreground"
           >
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </motion.button>
+          </button>
         </div>
 
         {/* Mobile Menu */}
@@ -133,76 +153,77 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
               className="md:hidden overflow-hidden"
             >
               <div className="pt-4 pb-2 flex flex-col gap-2">
                 {navItems.map((item) => (
                   <Link key={item.id} href={item.href}>
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
+                    <button
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`w-full px-4 py-3 rounded-xl text-left font-medium transition-all ${
+                      className={`w-full px-4 py-3 rounded-xl text-left font-medium ${
                         isActive(item.href)
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary/50 text-foreground hover:bg-secondary"
                       }`}
                     >
                       {item.label}
-                    </motion.button>
+                    </button>
                   </Link>
                 ))}
                 
                 {/* Mobile Auth */}
                 {user ? (
-                  <div className="flex items-center gap-2 pt-2">
-                    <Link href="/profile" className="flex-1" onClick={() => setIsMobileMenuOpen(false)}>
-                      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-secondary/50 hover:bg-secondary/70 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                          {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <User className="w-5 h-5 text-primary" />
-                          )}
-                        </div>
-                        <span className="text-sm font-medium text-foreground">
-                          Мой профиль
-                        </span>
-                      </div>
+                  <div className="flex flex-col gap-2 pt-2">
+                    {/* Админка в мобильном меню */}
+                    {user.email === "bigbaby.xyz@gmail.com" && (
+                      <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                        <button className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/20 text-primary">
+                          <Shield className="w-5 h-5" />
+                          <span>Админ-панель</span>
+                        </button>
+                      </Link>
+                    )}
+                    
+                    {/* Профиль в мобильном меню */}
+                    <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
+                      <button className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-secondary/50 hover:bg-secondary/70">
+                        <User className="w-5 h-5" />
+                        <span>Профиль</span>
+                      </button>
                     </Link>
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
+                    
+                    {/* Выход в мобильном меню */}
+                    <button
                       onClick={() => {
                         signOut()
                         setIsMobileMenuOpen(false)
                       }}
-                      className="px-4 py-3 rounded-xl bg-destructive/10 text-destructive"
+                      className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-destructive/10 text-destructive"
                     >
                       <LogOut className="w-5 h-5" />
-                    </motion.button>
+                      <span>Выйти</span>
+                    </button>
                   </div>
                 ) : (
                   <div className="flex gap-2 pt-2">
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
+                    <button
                       onClick={() => {
                         onOpenAuth("login")
                         setIsMobileMenuOpen(false)
                       }}
-                      className="flex-1 px-4 py-3 rounded-xl text-center font-medium bg-secondary/50 text-foreground"
+                      className="flex-1 px-4 py-3 rounded-xl bg-secondary/50 text-foreground"
                     >
                       Войти
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
+                    </button>
+                    <button
                       onClick={() => {
                         onOpenAuth("register")
                         setIsMobileMenuOpen(false)
                       }}
-                      className="flex-1 px-4 py-3 rounded-xl text-center font-medium bg-primary text-primary-foreground"
+                      className="flex-1 px-4 py-3 rounded-xl bg-primary text-primary-foreground"
                     >
                       Регистрация
-                    </motion.button>
+                    </button>
                   </div>
                 )}
               </div>
@@ -211,38 +232,5 @@ export function GlassNavigation({ onOpenAuth }: GlassNavigationProps) {
         </AnimatePresence>
       </nav>
     </motion.header>
-  )
-}
-
-function NavButton({
-  label,
-  href,
-  isActive,
-}: {
-  label: string
-  href: string
-  isActive: boolean
-}) {
-  return (
-    <Link href={href}>
-      <motion.span
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 cursor-pointer block ${
-          isActive
-            ? "text-primary-foreground"
-            : "text-foreground/70 hover:text-foreground hover:bg-secondary/50"
-        }`}
-      >
-        {isActive && (
-          <motion.div
-            layoutId="activeNav"
-            className="absolute inset-0 bg-primary rounded-xl shadow-lg"
-            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-          />
-        )}
-        <span className="relative z-10">{label}</span>
-      </motion.span>
-    </Link>
   )
 }
