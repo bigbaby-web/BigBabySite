@@ -99,38 +99,67 @@ export default function AdminPage() {
     const fileExt = file.name.split('.').pop()
     const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file)
+    console.log("📤 Начинаем загрузку файла:")
+    console.log("   - Bucket:", bucket)
+    console.log("   - Путь:", fileName)
+    console.log("   - Размер файла:", file.size, "bytes")
+    console.log("   - Тип файла:", file.type)
 
-    if (uploadError) {
-      console.error("Upload error:", uploadError)
+    try {
+      const { error: uploadError, data } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file)
+
+      if (uploadError) {
+        console.error("❌ Ошибка загрузки:", uploadError)
+        console.error("   - Сообщение:", uploadError.message)
+        console.error("   - Детали:", JSON.stringify(uploadError, null, 2))
+        return null
+      }
+
+      console.log("✅ Файл успешно загружен:", data)
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName)
+
+      console.log("🔗 Публичный URL:", publicUrl)
+      return publicUrl
+    } catch (err) {
+      console.error("💥 Неожиданная ошибка:", err)
       return null
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName)
-
-    return publicUrl
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setUploading(true)
+    console.log("🚀 Начинаем сохранение трека...")
 
     try {
       let audioUrl = formData.audio_url
       let coverUrl = formData.cover_url
 
       if (audioFile) {
+        console.log("🎵 Загружаем аудиофайл...")
         const uploadedAudioUrl = await uploadFile(audioFile, "tracks", "audio")
-        if (uploadedAudioUrl) audioUrl = uploadedAudioUrl
+        if (uploadedAudioUrl) {
+          audioUrl = uploadedAudioUrl
+          console.log("✅ Аудио загружено, URL:", audioUrl)
+        } else {
+          console.log("❌ Не удалось загрузить аудио")
+        }
       }
 
       if (coverFile) {
+        console.log("🖼️ Загружаем обложку...")
         const uploadedCoverUrl = await uploadFile(coverFile, "tracks", "covers")
-        if (uploadedCoverUrl) coverUrl = uploadedCoverUrl
+        if (uploadedCoverUrl) {
+          coverUrl = uploadedCoverUrl
+          console.log("✅ Обложка загружена, URL:", coverUrl)
+        } else {
+          console.log("❌ Не удалось загрузить обложку")
+        }
       }
 
       const trackData = {
@@ -144,30 +173,37 @@ export default function AdminPage() {
         user_id: user?.id
       }
 
+      console.log("📝 Данные трека для сохранения:", trackData)
+
       if (editingTrack) {
+        console.log("✏️ Обновляем существующий трек:", editingTrack.id)
         const { error } = await supabase
           .from("tracks")
           .update(trackData)
           .eq("id", editingTrack.id)
 
         if (error) throw error
+        console.log("✅ Трек обновлен")
         showNotification('success', 'Трек успешно обновлен!')
       } else {
+        console.log("➕ Добавляем новый трек")
         const { error } = await supabase
           .from("tracks")
           .insert([trackData])
 
         if (error) throw error
+        console.log("✅ Трек добавлен")
         showNotification('success', 'Трек успешно добавлен!')
       }
 
       resetForm()
       fetchTracks()
     } catch (error) {
-      console.error("Error saving track:", error)
+      console.error("❌ Ошибка сохранения трека:", error)
       showNotification('error', 'Ошибка сохранения трека')
     } finally {
       setUploading(false)
+      console.log("🏁 Процесс сохранения завершен")
     }
   }
 
